@@ -10,7 +10,12 @@
         "request": "launch",
         "script": "${file}",
         "args": [
-            "-AwsProfile 'oxygen-orgrole'"
+            "-AwsProfile 'oxygen-orgrole'",
+            "-AwsRegion 'eu-west-1'",
+            "-LogGroupName  '/aws/eks/hellman/cluster'",
+            "-LogStreamNamePrefix 'kube-apiserver-audit-'",
+            "-S3BucketName 'dfds-datalake'",
+            "-S3Path 'aws/eks'",
             "-LocalExec"
         ],
         "cwd": "${file}"
