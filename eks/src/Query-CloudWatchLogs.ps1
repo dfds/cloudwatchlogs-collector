@@ -1,7 +1,6 @@
 #Requires -Module @{ ModuleName = 'AWSPowerShell.NetCore'; ModuleVersion = '4.0.0' }
 
 <#
-KIAM vs. local execution
 Consider uploading all json files in path (retry)
 Edgecases regarding query intervals and +/- 1 second
 #>
@@ -9,33 +8,33 @@ Edgecases regarding query intervals and +/- 1 second
 [CmdletBinding()]
 param (
 
-    [Parameter(Mandatory)]
+    [Parameter()]
     [string]
     $AwsProfile,
 
-    [Parameter()]
+    [Parameter(Mandatory)]
     [string]
-    $AwsRegion = 'eu-west-1',
+    $AwsRegion,
 
     [Parameter()]
     [string]
-    $LogGroupName = "/aws/eks/hellman/cluster",
+    $LogGroupName,
 
     [Parameter()]
     [string]
-    $LogStreamNamePrefix = "kube-apiserver-audit-",
+    $LogStreamNamePrefix,
 
     [Parameter()]
     [Int16]
     $QueryIntervalHours = 7 * 24,
 
-    [Parameter()]
+    [Parameter(Mandatory)]
     [string]
-    $S3BucketName = "dfds-datalake",
+    $S3BucketName,
 
     [Parameter()]
     [string]
-    $S3Path = "aws/eks",
+    $S3Path,
 
     [switch]
     $LocalExec
@@ -64,6 +63,12 @@ Begin {
         $QueryIntervalHours = 1/60
     }
 
+    # Set AWS profile and region
+    Set-DefaultAWSRegion -Region $AwsRegion
+    If ($AwsProfile) {    
+        Set-AWSCredential -ProfileName $AwsProfile
+    }
+
 }
 
 Process {
@@ -71,7 +76,7 @@ Process {
     While ($true) {
 
         # Get basic info on log group
-        $LogGroup = Get-CWLLogGroup -ProfileName $AwsProfile -Region $AwsRegion -LogGroupNamePrefix $LogGroupName | Where-Object {$_.LogGroupName -eq $LogGroupName}
+        $LogGroup = Get-CWLLogGroup -LogGroupNamePrefix $LogGroupName | Where-Object {$_.LogGroupName -eq $LogGroupName}
         $LogGroupStartTime = $LogGroup.CreationTime
         $LogGroupStartTimeUnix = [math]::Round(($LogGroupStartTime - $Epoch | Select-Object -Expand TotalSeconds))
 
@@ -79,7 +84,7 @@ Process {
         Write-Host "Getting last query time from s3://$S3BucketName/$LastQueryS3Key"
         Remove-Item $LastQueryFile -ErrorAction SilentlyContinue | Out-Null
         Try {
-            Read-S3Object -AWSProfileName $AwsProfile -Region $AwsRegion -BucketName $S3BucketName -Key $LastQueryS3Key -File $LastQueryFile | Out-Null
+            Read-S3Object -BucketName $S3BucketName -Key $LastQueryS3Key -File $LastQueryFile | Out-Null
             [int64]$QueryStartTimeUnix = Get-Content $LastQueryFile -ErrorAction Stop | Select-Object -First 1
         }
         Catch { 
@@ -128,8 +133,6 @@ fields @timestamp, verb, objectRef.resource, objectRef.namespace, objectRef.name
 | sort @timestamp
 "@
             $QueryArgs = @{
-                ProfileName  = $AwsProfile
-                Region       = $AwsRegion
                 LogGroupName = $LogGroupName
                 QueryString  = $QueryString
                 StartTime    = $QueryChunk.StartTime
@@ -146,13 +149,13 @@ fields @timestamp, verb, objectRef.resource, objectRef.namespace, objectRef.name
             # Wait for query to finish
             Do {
                 Write-Host "Waiting for query '$QueryId' ($(Get-Date))"
-                Try { $Query = Get-CWLQuery -ProfileName $AwsProfile -Region $AwsRegion -ErrorAction Stop | Where-Object { $_.QueryId -eq $QueryId } }
+                Try { $Query = Get-CWLQuery -ErrorAction Stop | Where-Object { $_.QueryId -eq $QueryId } }
                 Catch { Write-Warning "$($_.Exception.Message)" }
                 Start-Sleep 10
             } While ($Query.Status -eq "Running")
 
             # Fetch and parse results
-            $QueryResult = Get-CWLQueryResult -ProfileName $AwsProfile -Region $AwsRegion -QueryId $QueryId
+            $QueryResult = Get-CWLQueryResult -QueryId $QueryId
             $ContentKB = [math]::Round($QueryResult.ContentLength / 1KB)
             $ScannedMB = [math]::Round($QueryResult.Statistics.BytesScanned / 1MB)
             $RecordsScanned = $QueryResult.Statistics.RecordsScanned
@@ -178,13 +181,13 @@ fields @timestamp, verb, objectRef.resource, objectRef.namespace, objectRef.name
         # ----- End logstream loop -----
 
         # Save query time
-        Write-S3Object -AWSProfileName $AwsProfile -Region $AwsRegion -BucketName $S3BucketName -Key $LastQueryS3Key -Content $QueryEndTimeUnix
+        Write-S3Object -BucketName $S3BucketName -Key $LastQueryS3Key -Content $QueryEndTimeUnix
 
         # Upload to S3
         If (Test-Path $OutputFilePath -PathType Leaf) {
             $S3Key = "$S3Path/$OutputFileName"
             Write-Host "Uploading '$OutputFileName' to s3://$S3BucketName/$S3Key"
-            Write-S3Object -ProfileName $AwsProfile -Region $AwsRegion -BucketName $S3BucketName -Key $S3Key -File $OutputFilePath -ContentType $OutputContentType
+            Write-S3Object -BucketName $S3BucketName -Key $S3Key -File $OutputFilePath -ContentType $OutputContentType
             If (!($LocalExec)) {
                 Remove-Item $OutputFilePath
             }
