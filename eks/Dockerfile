@@ -9,3 +9,5 @@ FROM base
 WORKDIR /work
 
 ADD src/*.ps1 /work/
+
+ENTRYPOINT ["pwsh", "-File", "./Query-CloudWatchLogs.ps1"]
