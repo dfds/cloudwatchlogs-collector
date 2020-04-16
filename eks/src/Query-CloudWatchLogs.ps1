@@ -26,7 +26,19 @@ param (
 
     [Parameter()]
     [Int16]
-    $QueryIntervalHours = 7 * 24,
+    $QueryIntervalHours = 7 * 24 - 1,
+
+    [Parameter()]
+    [int16]
+    $QueryRetrySeconds = 10,
+
+    [Parameter()]
+    [int32]
+    $QueryChunkSeconds = 1209600, # 2 weeks
+
+    [Parameter()]
+    [int16]
+    $IntervalWaitMinutes = 60,
 
     [Parameter(Mandatory)]
     [string]
@@ -50,9 +62,6 @@ Begin {
     $OutputFileNamePrefix = $LogStreamNamePrefix -replace "-$", "" # remove trailing dash if present
     $OutputFileNameExt = "json"
     $OutputContentType = "application/json"
-    $QueryRetrySeconds = 10
-    $QueryChunkSeconds = 1209600 # 2 weeks
-    $IntervalWaitSeconds = 300
     $LastQueryFileName = "${OutputFileNamePrefix}_LastQueryTime.txt"
     $LastQueryFile = Join-Path -Path ([IO.Path]::GetTempPath()) -ChildPath $LastQueryFileName
     $LastQueryS3Key = "$S3Path/$LastQueryFileName"
@@ -196,8 +205,8 @@ fields @timestamp, verb, objectRef.resource, objectRef.namespace, objectRef.name
         # Wait until next interval
         $NextQueryTime = $QueryEndTime + (New-TimeSpan -Hours $QueryIntervalHours)
         Do {
-            Write-Host "Waiting until $NextQueryTime before next query"
-            Start-Sleep -Seconds $IntervalWaitSeconds
+            Write-Host "Waiting until $NextQueryTime before next query ($(Get-Date))"
+            Start-Sleep -Seconds ($IntervalWaitMinutes * 60)
         } Until ((Get-Date) -ge $NextQueryTime)
 
     }
