@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: cloudwatchlogs-collector
+  name: cloudwatchlogs-collector
+  namespace: logcollect
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloudwatchlogs-collector
+  template:
+    metadata:
+      labels:
+        app: cloudwatchlogs-collector
+      annotations:
+        iam.amazonaws.com/role: CloudWatchLogsCollector
+    spec:
+      containers:
+      - image: dfdsdk/cloudwatchlogs-collector:eks-0.3
+        args:
+        - -AwsRegion
+        - eu-west-1
+        - -LogGroupName
+        - /aws/eks/hellman/cluster
+        - -LogStreamNamePrefix
+        - kube-apiserver-audit-
+        - -S3BucketName
+        - dfds-datalake
+        - -S3Path
+        - aws/eks
+        name: cloudwatchlogs-collector
