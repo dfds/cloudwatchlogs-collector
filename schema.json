@@ -1,0 +1,26 @@
+{
+    "source": "AWS CloudWatch Logs by log group",
+    "destination": "JSON formatted file in AWS S3",
+    "schema": [
+        {
+            "source_field": "@timestamp",
+            "destination_field": "timestamp",
+            "destination_type": "timestamp"
+        },
+        {
+            "source_field": "objectRef.resource",
+            "destination_field": "objectResource",
+            "destination_type": "string"
+        },
+        {
+            "source_field": "objectRef.namespace",
+            "destination_field": "objectNamespace",
+            "destination_type": "string"
+        },
+        {
+            "source_field": "objectRef.name",
+            "destination_field": "objectName",
+            "destination_type": "string"
+        }
+    ]
+}
