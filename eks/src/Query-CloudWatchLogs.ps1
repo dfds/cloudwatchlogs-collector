@@ -26,7 +26,7 @@ param (
 
     [Parameter()]
     [Int16]
-    $QueryIntervalHours = 7 * 24 - 1,
+    $QueryIntervalHours = 7 * 24 - 1, # 1 week minus one hour
 
     [Parameter()]
     [int16]
@@ -34,7 +34,7 @@ param (
 
     [Parameter()]
     [int32]
-    $QueryChunkSeconds = 1209600, # 2 weeks
+    $QueryChunkSeconds = 2 * 7 * 24 * 60 * 60, # 2 weeks
 
     [Parameter()]
     [int16]
@@ -55,10 +55,17 @@ param (
 
 Begin {
 
+    # Include
+    if ($PSScriptRoot) {
+        $ScriptRoot = $PSScriptRoot
+    } else {
+        $ScriptRoot = './'
+    }
+    . (Join-Path $ScriptRoot 'include.ps1')
+
     # Define "constants"
     $ErrorActionPreference = "Stop"
     $ProgressPreference = "SilentlyContinue" # do no show progress bars
-    $Epoch = Get-Date "1970-01-01"
     $OutputFileNamePrefix = $LogStreamNamePrefix -replace "-$", "" # remove trailing dash if present
     $OutputFileNameExt = "json"
     $OutputContentType = "application/json"
@@ -68,8 +75,8 @@ Begin {
 
     # Local execution?
     If ($LocalExec) {
-        $IntervalWaitSeconds = 10
-        $QueryIntervalHours = 1/60
+        $IntervalWaitMinutes = 1/6
+        $QueryIntervalHours  = 1/60
     }
 
     # Set AWS profile and region
@@ -87,7 +94,7 @@ Process {
         # Get basic info on log group
         $LogGroup = Get-CWLLogGroup -LogGroupNamePrefix $LogGroupName | Where-Object {$_.LogGroupName -eq $LogGroupName}
         $LogGroupStartTime = $LogGroup.CreationTime
-        $LogGroupStartTimeUnix = [math]::Round(($LogGroupStartTime - $Epoch | Select-Object -Expand TotalSeconds))
+        $LogGroupStartTimeUnix = [math]::Round((Get-DateTime -Date $LogGroupStartTime).UnixTime)
 
         # Determine query start time
         Write-Host "Getting last query time from s3://$S3BucketName/$LastQueryS3Key"
@@ -100,13 +107,13 @@ Process {
             Write-Host "No file found for last query, defaulting to creation time of log group ($LogGroupStartTime)"
             [int64]$QueryStartTimeUnix = $LogGroupStartTimeUnix
         }
-        $QueryStartTime = ([datetimeoffset]::FromUnixTimeSeconds($QueryStartTimeUnix)).DateTime
-        $QueryStartTimestamp = Get-Date $QueryStartTime -Format "yyyyMMdd-HHmmss"
+        $QueryStartTime = (Get-DateTime -UnixTime $QueryStartTimeUnix).DateTimeUTC
+        $QueryStartTimestamp = (Get-DateTime -UnixTime $QueryStartTimeUnix).TimeStampUTC
 
         # Determine query end time
         $QueryEndTime = Get-Date
-        [int64]$QueryEndTimeUnix = [math]::Round(($QueryEndTime - $Epoch | Select-Object -Expand TotalSeconds))
-        $QueryEndTimestamp = Get-Date $QueryEndTime -Format "yyyyMMdd-HHmmss"
+        $QueryEndTimeUnix = [math]::Round((Get-DateTime -Date $QueryEndTime).UnixTime)
+        $QueryEndTimestamp = (Get-DateTime -Date $QueryEndTime).TimeStampUTC
         $QueryTimeDiff = $QueryEndTimeUnix - $QueryStartTimeUnix
 
         # Determine output file name and path
@@ -133,9 +140,9 @@ Process {
         ForEach ($QueryChunk in $QueryChunks) {
 
             # Start query
-            $QueryChunkStartTime = ([datetimeoffset]::FromUnixTimeSeconds($QueryChunk.StartTime)).DateTime
-            $QueryChunkEndTime = ([datetimeoffset]::FromUnixTimeSeconds($QueryChunk.EndTime)).DateTime
-            Write-Host "Querying '$LogGroupName' for events between $QueryChunkStartTime and $QueryChunkEndTime"
+            $QueryChunkStartTime = (Get-DateTime -UnixTime $QueryChunk.StartTime).DateTimeUTC
+            $QueryChunkEndTime = (Get-DateTime -UnixTime $QueryChunk.EndTime).DateTimeUTC
+            Write-Host "Querying '$LogGroupName' for events between $((Get-DateTime -Date $QueryChunkStartTime).ISOSortableUTC) and $((Get-DateTime -Date $QueryChunkEndTime).ISOSortableUTC)"
             $QueryString = @"
 fields @timestamp, verb, objectRef.resource, objectRef.namespace, objectRef.name
 | filter @logStream like "$LogStreamNamePrefix" and verb = "create" and objectRef.resource = "replicasets" and responseStatus.code like /2\d\d/
@@ -157,7 +164,7 @@ fields @timestamp, verb, objectRef.resource, objectRef.namespace, objectRef.name
 
             # Wait for query to finish
             Do {
-                Write-Host "Waiting for query '$QueryId' ($(Get-Date))"
+                Write-Host "Waiting for query '$QueryId' ($((Get-DateTime).ISOSortableUTC))"
                 Try { $Query = Get-CWLQuery -ErrorAction Stop | Where-Object { $_.QueryId -eq $QueryId } }
                 Catch { Write-Warning "$($_.Exception.Message)" }
                 Start-Sleep 10
@@ -205,7 +212,7 @@ fields @timestamp, verb, objectRef.resource, objectRef.namespace, objectRef.name
         # Wait until next interval
         $NextQueryTime = $QueryEndTime + (New-TimeSpan -Hours $QueryIntervalHours)
         Do {
-            Write-Host "Waiting until $NextQueryTime before next query ($(Get-Date))"
+            Write-Host "Waiting until $NextQueryTime before next query ($((Get-DateTime).ISOSortableUTC))"
             Start-Sleep -Seconds ($IntervalWaitMinutes * 60)
         } Until ((Get-Date) -ge $NextQueryTime)
 
