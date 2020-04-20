@@ -77,4 +77,4 @@ stages:
               kubernetesServiceEndpoint: '$(k8s-service-connection)'
               namespace: '$(kubernetes-namespace)'
               command: apply
-              arguments: '-f k8s/'
+              arguments: '-f $(System.DefaultWorkingDirectory)/k8s/'
