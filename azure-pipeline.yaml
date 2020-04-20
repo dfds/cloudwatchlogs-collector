@@ -1,0 +1,81 @@
+name: $(Build.BuildId)
+
+# Triggers Pipeline only on Master
+trigger:
+  branches:
+    include:
+    - master
+  paths:
+    # Changes to these files does not trigger a new build / release
+    exclude:
+    - README.md
+    - LICENSE
+    - azure-pipelines.yaml
+    - eks/*
+    include:
+    - k8s/*
+    - infrastructure/*
+
+# Disables triggering Pipeline run at creation of every Pull Request
+pr: none
+
+# Default agent pool to use for build pipeline
+pool:
+  vmImage: 'ubuntu-latest'
+
+resources:
+  containers:
+    - container: prime_pipeline_container
+      image: dfdsdk/prime-pipeline:0.4.0
+      env:
+        AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+
+# Global variables for the pipeline
+variables:
+  - name: 'k8s-service-connection'
+    value: 'Kubernetes-Hellman'
+  - name: 'kubernetes-namespace'
+    value: 'logcollect'
+
+stages:
+# Continuous Deployment steps
+- stage: CD
+  displayName: 'Continuous Deployment'
+  # Run CD only if CI succeeds and if pipeline runs from Master branch
+  condition: and(eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+  jobs:
+    - job: infrastructure
+      displayName: 'Provision infrastructure'
+      container: prime_pipeline_container
+      steps:
+        - script: |
+            echo 'Checking for required variables...'
+            bash -c '[[ -z $AWS_ACCESS_KEY_ID || -z $AWS_SECRET_ACCESS_KEY ]] && exit 1 || true'
+          displayName: Init pipeline
+
+        - script: |
+            terragrunt plan --terragrunt-working-dir ./infrastructure --terragrunt-source-update --terragrunt-non-interactive -input=false
+          displayName: Terragrunt Plan
+
+        - script: |
+            terragrunt apply --terragrunt-working-dir ./infrastructure --terragrunt-source-update --terragrunt-non-interactive -input=false -auto-approve
+          displayName: Terragrunt Apply
+
+  jobs:
+  # Deployment job for kubernetes deployments
+  - deployment: K8s
+    displayName: 'Deploy to Kubernetes'
+    environment: 'Hellman'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          # Apply Kubernetes manifests
+          - task: Kubernetes@1
+            displayName: 'Apply manifests'
+            inputs:
+              connectionType: Kubernetes Service Connection
+              kubernetesServiceEndpoint: '$(k8s-service-connection)'
+              namespace: '$(kubernetes-namespace)'
+              command: apply
+              arguments: '-f $(Pipeline.Workspace)/k8s/'
