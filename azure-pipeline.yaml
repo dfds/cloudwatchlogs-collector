@@ -42,7 +42,6 @@ stages:
 - stage: CD
   displayName: 'Continuous Deployment'
   # Run CD only if CI succeeds and if pipeline runs from Master branch
-  condition: and(eq(variables['Build.SourceBranch'], 'refs/heads/master'))
   jobs:
   - job: infrastructure
     displayName: 'Provision infrastructure'
