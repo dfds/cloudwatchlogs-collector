@@ -59,6 +59,11 @@ stages:
       - script: |
           terragrunt apply --terragrunt-working-dir ./infrastructure --terragrunt-source-update --terragrunt-non-interactive -input=false -auto-approve
         displayName: Terragrunt Apply
+      
+      # Upload Kubernetes manifests to current artifact Pipeline from folder /k8s
+      - publish: $(System.DefaultWorkingDirectory)/k8s
+        artifact: manifests
+        displayName: 'Publish Artifact: manifests'
 
   # Deployment job for kubernetes deployments
   - deployment: K8s
@@ -69,6 +74,11 @@ stages:
       runOnce:
         deploy:
           steps:
+          
+          # Download manifest from current artifacts pipeline
+          - download: current
+            artifact: manifests
+            displayName: 'Download Artifact: manifests'
           # Apply Kubernetes manifests
           - task: Kubernetes@1
             displayName: 'Apply manifests'
@@ -77,4 +87,4 @@ stages:
               kubernetesServiceEndpoint: '$(k8s-service-connection)'
               namespace: '$(kubernetes-namespace)'
               command: apply
-              arguments: '-f $(Build.SourcesDirectory)/k8s/'
+              arguments: '-f $(Pipeline.Workspace)/manifests/'
