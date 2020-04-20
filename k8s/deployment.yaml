@@ -18,7 +18,7 @@ spec:
         iam.amazonaws.com/role: CloudWatchLogsCollector
     spec:
       containers:
-      - image: dfdsdk/cloudwatchlogs-collector:eks-0.4
+      - image: dfdsdk/cloudwatchlogs-collector:eks-0.5
         args:
         - -AwsRegion
         - eu-west-1
@@ -26,6 +26,8 @@ spec:
         - /aws/eks/hellman/cluster
         - -LogStreamNamePrefix
         - kube-apiserver-audit-
+        - -QueryIntervalHours
+        - "12"
         - -S3BucketName
         - dfds-datalake
         - -S3Path
