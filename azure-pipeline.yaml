@@ -44,24 +44,23 @@ stages:
   # Run CD only if CI succeeds and if pipeline runs from Master branch
   condition: and(eq(variables['Build.SourceBranch'], 'refs/heads/master'))
   jobs:
-    - job: infrastructure
-      displayName: 'Provision infrastructure'
-      container: prime_pipeline_container
-      steps:
-        - script: |
-            echo 'Checking for required variables...'
-            bash -c '[[ -z $AWS_ACCESS_KEY_ID || -z $AWS_SECRET_ACCESS_KEY ]] && exit 1 || true'
-          displayName: Init pipeline
+  - job: infrastructure
+    displayName: 'Provision infrastructure'
+    container: prime_pipeline_container
+    steps:
+      - script: |
+          echo 'Checking for required variables...'
+          bash -c '[[ -z $AWS_ACCESS_KEY_ID || -z $AWS_SECRET_ACCESS_KEY ]] && exit 1 || true'
+        displayName: Init pipeline
 
-        - script: |
-            terragrunt plan --terragrunt-working-dir ./infrastructure --terragrunt-source-update --terragrunt-non-interactive -input=false
-          displayName: Terragrunt Plan
+      - script: |
+          terragrunt plan --terragrunt-working-dir ./infrastructure --terragrunt-source-update --terragrunt-non-interactive -input=false
+        displayName: Terragrunt Plan
 
-        - script: |
-            terragrunt apply --terragrunt-working-dir ./infrastructure --terragrunt-source-update --terragrunt-non-interactive -input=false -auto-approve
-          displayName: Terragrunt Apply
+      - script: |
+          terragrunt apply --terragrunt-working-dir ./infrastructure --terragrunt-source-update --terragrunt-non-interactive -input=false -auto-approve
+        displayName: Terragrunt Apply
 
-  jobs:
   # Deployment job for kubernetes deployments
   - deployment: K8s
     displayName: 'Deploy to Kubernetes'
