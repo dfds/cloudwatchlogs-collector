@@ -63,6 +63,7 @@ stages:
   # Deployment job for kubernetes deployments
   - deployment: K8s
     displayName: 'Deploy to Kubernetes'
+    dependsOn: infrastructure
     environment: 'Hellman'
     strategy:
       runOnce:
@@ -76,4 +77,4 @@ stages:
               kubernetesServiceEndpoint: '$(k8s-service-connection)'
               namespace: '$(kubernetes-namespace)'
               command: apply
-              arguments: '-f $(Pipeline.Workspace)/k8s/'
+              arguments: '-f ./k8s/'
