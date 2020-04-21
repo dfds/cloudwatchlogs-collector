@@ -1,53 +1,86 @@
 #Requires -Module @{ ModuleName = 'AWSPowerShell.NetCore'; ModuleVersion = '4.0.0' }
 
 <#
-Consider uploading all json files in path (retry)
-Edgecases regarding query intervals and +/- 1 second
+
+.SYNOPSIS
+    Continuously running Powershell Core script for collecting CloudWatch Logs and storing them in S3.
+
+.DESCRIPTION
+    Queries for larger timespans than the defined threshold, are broken down into smaller chunks. This is to avoid query timeouts and exceeding the 10000 result cap per query. Query results are filtered, transformed and stored in the specified S3 bucket. The script will then sleep according to the defined query interval, after which the process is repeated.
+
+.EXAMPLE
+    ./Query-CloudWatchLogs.ps1 -AwsRegion eu-west-1 -LogGroupName /aws/eks/clustername/cluster -LogStreamNamePrefix kube-apiserver-audit- -S3BucketName
+datalake-bucket -S3Path aws/eks -QueryIntervalHours 12
+
+.EXAMPLE
+    ./Query-CloudWatchLogs.ps1 -AwsRegion eu-west-1 -LogGroupName /aws/eks/clustername/cluster -LogStreamNamePrefix kube-apiserver-audit- -S3BucketName datalake-bucket -S3Path aws/eks -LocalExec -AwsProfile logging-orgrole
+
+.NOTES
+    Consider uploading all json files in path (retry)
+    Edgecases regarding query intervals and +/- 1 second
+    Split operations into function, for greater overview
+
+.LINK
+    https://github.com/dfds/cloudwatchlogs-collector
+    https://docs.aws.amazon.com/powershell/latest/userguide/specifying-your-aws-credentials.html#pstools-cred-provider-chain
+    https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CWL_QuerySyntax.html
+
 #>
 
 [CmdletBinding()]
 param (
 
+    # Name of the AWS profile to use for authentication. If not specified, the normal credential search order is used.
     [Parameter()]
     [string]
     $AwsProfile,
 
+    # AWS region where the CloudWatch Logs and target S3 bucket reside, e.g. 'eu-west-1'.
     [Parameter(Mandatory)]
     [string]
     $AwsRegion,
 
+    # Name of the CloudWatch Logs log group to query. By default, AWS EKS will log to a log group named '/aws/eks/${clustername}/cluster'.
     [Parameter()]
     [string]
     $LogGroupName,
 
+    # Part of the log stream names to be included as a filter in the CloudWatch Logs query.
     [Parameter()]
     [string]
     $LogStreamNamePrefix,
 
+    # Interval at which queries will be executed. The script will sleep in-between.
     [Parameter()]
     [Int16]
     $QueryIntervalHours = 7 * 24 - 1, # 1 week minus one hour
 
+    # How long to sleep, before retrying failed queries.
     [Parameter()]
     [int16]
     $QueryRetrySeconds = 10,
 
+    # The timespan length to break down queries into.
     [Parameter()]
-    [int32]
-    $QueryChunkSeconds = 2 * 7 * 24 * 60 * 60, # 2 weeks
+    [int16]
+    $QueryChunkDays = 14,
 
+    # The interval at which to check if query interval has passed
     [Parameter()]
     [int16]
     $IntervalWaitMinutes = 60,
 
+    # The S3 bucket the output file is uploaded to.                                                                                        |
     [Parameter(Mandatory)]
     [string]
     $S3BucketName,
 
+    # The path (or directory) in the S3 bucket to store the output file.  
     [Parameter()]
     [string]
     $S3Path,
 
+    # Used for local execution/debugging. Lowers intervals to give quicker feedback and retains local output file. 
     [switch]
     $LocalExec
 
@@ -55,10 +88,10 @@ param (
 
 Begin {
 
-    # Include
-    if ($PSScriptRoot) {
+    # Load include file
+    If ($PSScriptRoot) {
         $ScriptRoot = $PSScriptRoot
-    } else {
+    } Else {
         $ScriptRoot = './'
     }
     . (Join-Path $ScriptRoot 'include.ps1')
@@ -72,6 +105,7 @@ Begin {
     $LastQueryFileName = "${OutputFileNamePrefix}_LastQueryTime.txt"
     $LastQueryFile = Join-Path -Path ([IO.Path]::GetTempPath()) -ChildPath $LastQueryFileName
     $LastQueryS3Key = "$S3Path/$LastQueryFileName"
+    $QueryChunkSeconds = $QueryChunkDays * 24 * 60 * 60
 
     # Local execution?
     If ($LocalExec) {
