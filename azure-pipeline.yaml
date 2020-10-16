@@ -33,7 +33,7 @@ resources:
 # Global variables for the pipeline
 variables:
   - name: 'k8s-service-connection'
-    value: 'Kubernetes-Hellman'
+    value: 'Kubernetes-Hellman-ops-deploy'
   - name: 'kubernetes-namespace'
     value: 'logcollect'
 

@@ -14,6 +14,7 @@
   - [Structure](#structure)
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
+- [Deployment prerequisites](#deployment-prerequisites)
 - [Usage](#usage)
 - [Deployment Flow](#deployment-flow)
   - [Infrastructure Deployment](#infrastructure-deployment)
@@ -54,6 +55,12 @@ Notable project directories and files:
 
 - [Powershell Core][powershell-core] (tested with 7.x)
 - [AWS Tools for Powershell NetCore][aws-powershell] 4.0.0+
+
+## Deployment prerequisites
+
+With the change to scoped Kubernetes service connections during deploment, certain manifests have been moved out of the k8s directory and moved to the *k8s_initial* directory.
+
+The manifests within *k8s_initial* will have to be run manually or with a different service connection due to elevated rights.
 
 <!-- USAGE EXAMPLES -->
 ## Usage
