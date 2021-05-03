@@ -26,7 +26,7 @@ pool:
 resources:
   containers:
     - container: prime_pipeline_container
-      image: dfdsdk/prime-pipeline:0.4.0
+      image: dfdsdk/prime-pipeline:0.5.9
       env:
         AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
 
