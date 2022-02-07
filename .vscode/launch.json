@@ -4,21 +4,21 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-    {
-        "name": "PowerShell Launch Current File",
-        "type": "PowerShell",
-        "request": "launch",
-        "script": "${file}",
-        "args": [
-            "-AwsProfile 'oxygen-orgrole'",
-            "-AwsRegion 'eu-west-1'",
-            "-LogGroupName  '/aws/eks/hellman/cluster'",
-            "-LogStreamNamePrefix 'kube-apiserver-audit-'",
-            "-S3BucketName 'dfds-datalake'",
-            "-S3Path 'aws/eks'",
-            "-LocalExec"
-        ],
-        "cwd": "${file}"
-    }
+        {
+            "name": "PowerShell Launch Current File",
+            "type": "PowerShell",
+            "request": "launch",
+            "script": "${file}",
+            "args": [
+                "-AwsProfile 'oxygen-orgrole'",
+                "-AwsRegion 'eu-west-1'",
+                "-LogGroupName  '/aws/eks/hellman/cluster'",
+                "-LogStreamNamePrefix 'kube-apiserver-audit-'",
+                "-S3BucketName 'dfds-datalake'",
+                "-S3Path 'aws/eks'",
+                "-DevelopmentMode"
+            ],
+            "cwd": "${file}"
+        }
     ]
 }
