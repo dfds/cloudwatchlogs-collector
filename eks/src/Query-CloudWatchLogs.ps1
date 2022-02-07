@@ -120,14 +120,31 @@ Begin {
         Set-AWSCredential -ProfileName $AwsProfile
     }
 
+    # Test if S3 bucket exists
+    If (!(Test-S3Bucket -BucketName $S3BucketName)) {
+        throw "S3 bucket ""$S3BucketName"" not found."
+    }
+
+    # Test write permission to S3 bucket
+    $S3AccessTestKey = "$S3Path/cloudwatchlogs-collector_access_test"
+    try { Write-S3Object -BucketName $S3BucketName -Key $S3AccessTestKey -Content 'Test that CloudWatchLogs-Collector can access S3 bucket' }
+    catch { throw "Cannot write S3 object ""s3://$S3BucketName/$S3AccessTestKey"": $_" }
+
+    # Test read permission to S3 bucket
+    $TempFilePath = New-TemporaryFile | Select-Object -ExpandProperty FullName
+    try { Read-S3Object -BucketName $S3BucketName -Key $S3AccessTestKey -File $TempFilePath | Out-Null }
+    catch { throw "Cannot read S3 object ""s3://$S3BucketName/$S3AccessTestKey"": $_" }
+    Remove-Item $TempFilePath -Force
+
+    # Test delete permission to S3 bucket (access test file only)
+    try { Remove-S3Object -BucketName $S3BucketName -Key $S3AccessTestKey -Force }
+    catch { throw "Cannot delete S3 object ""s3://$S3BucketName/$S3AccessTestKey"": $_" }
+
 }
 
 Process {
 
     While ($true) {
-
-        # Verify access to S3 bucket
-
 
         # Get basic info on log group
         $LogGroup = Get-CWLLogGroup -LogGroupNamePrefix $LogGroupName | Where-Object { $_.LogGroupName -eq $LogGroupName }
