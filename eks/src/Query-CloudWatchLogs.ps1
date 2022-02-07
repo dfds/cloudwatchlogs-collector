@@ -1,5 +1,6 @@
 #Requires -Module @{ ModuleName = 'AWS.Tools.CloudWatchLogs'; ModuleVersion = '4.1.0' }
 #Requires -Module @{ ModuleName = 'AWS.Tools.S3'; ModuleVersion = '4.1.0' }
+#Requires -Module @{ ModuleName = 'AWS.Tools.SecurityToken'; ModuleVersion = '4.1.0' }
 
 <#
 
@@ -14,7 +15,7 @@
 datalake-bucket -S3Path aws/eks -QueryIntervalHours 12
 
 .EXAMPLE
-    ./Query-CloudWatchLogs.ps1 -AwsRegion eu-west-1 -LogGroupName /aws/eks/clustername/cluster -LogStreamNamePrefix kube-apiserver-audit- -S3BucketName datalake-bucket -S3Path aws/eks -LocalExec -AwsProfile logging-orgrole
+    ./Query-CloudWatchLogs.ps1 -AwsRegion eu-west-1 -LogGroupName /aws/eks/clustername/cluster -LogStreamNamePrefix kube-apiserver-audit- -S3BucketName datalake-bucket -S3Path aws/eks -DevelopmentMode -AwsProfile logging-orgrole
 
 .NOTES
     Consider uploading all json files in path (retry)
@@ -81,9 +82,9 @@ param (
     [string]
     $S3Path,
 
-    # Used for local execution/debugging. Lowers intervals to give quicker feedback and retains local output file.
+    # Development mode. Lowers intervals to give quicker feedback and retains local output file.
     [switch]
-    $LocalExec
+    $DevelopmentMode
 
 )
 
@@ -110,16 +111,22 @@ Begin {
     $QueryChunkSeconds = $QueryChunkDays * 24 * 60 * 60
 
     # Local execution?
-    If ($LocalExec) {
+    If ($DevelopmentMode) {
         $IntervalWaitMinutes = 1 / 6
         $QueryIntervalHours = 1 / 60
     }
 
     # Set AWS profile and region
     Set-DefaultAWSRegion -Region $AwsRegion
-    If ($AwsProfile) {
-        Set-AWSCredential -ProfileName $AwsProfile
+    If (($env:AWS_ROLE_ARN) -and ($env:AWS_WEB_IDENTITY_TOKEN_FILE)) {
+        # Authenticate via IAM Roles for Service Accounts (IRSA)
+        $UseWebIdentity = $true
+        Refresh-AWSWebCreds
     }
+    elseif ($AwsProfile) {
+        # ... or use the specified AWS profile
+        Set-AWSCredential -ProfileName $AwsProfile
+    } # ... or use normal credentials search order
 
     # Test if S3 bucket exists
     If (!(Test-S3Bucket -BucketName $S3BucketName)) {
@@ -146,6 +153,11 @@ Begin {
 Process {
 
     While ($true) {
+
+        # Refresh AWS credentials from web identity token (if used)
+        If ($UseWebIdentity) {
+            Refresh-AWSWebCreds
+        }
 
         # Get basic info on log group
         $LogGroup = Get-CWLLogGroup -LogGroupNamePrefix $LogGroupName | Where-Object { $_.LogGroupName -eq $LogGroupName }
@@ -263,7 +275,7 @@ fields @timestamp, verb, objectRef.resource, objectRef.namespace, objectRef.name
             $S3Key = "$S3Path/$OutputFileName"
             Write-Host "Uploading '$OutputFileName' to s3://$S3BucketName/$S3Key"
             Write-S3Object -BucketName $S3BucketName -Key $S3Key -File $OutputFilePath -ContentType $OutputContentType
-            If (!($LocalExec)) {
+            If (!($DevelopmentMode)) {
                 Remove-Item $OutputFilePath
             }
         }
