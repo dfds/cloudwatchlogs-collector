@@ -68,15 +68,19 @@ module "iam_role" {
   role_description     = "Role for CloudWatch Logs Collector, that queries CWL and saves results to S3."
   assume_role_policy   = <<EOF
 {
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "AWS": "arn:aws:iam::738063116313:root"
-      },
-      "Action": "sts:AssumeRole",
-      "Condition": {}
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "Federated": "arn:aws:iam::${var.oidc_account_id}:oidc-provider/${var.oidc_provider}"
+            },
+            "Action": "sts:AssumeRoleWithWebIdentity",
+            "Condition": {
+                "StringEquals": {
+                    "${var.oidc_provider}:sub": "system:serviceaccount:${var.k8s_namespace}:${var.k8s_serviceaccount}"
+                }
+            }
         }
     ]
 }
