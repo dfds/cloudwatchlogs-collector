@@ -2,13 +2,8 @@ terraform {
   backend "s3" {}
 }
 
-provider "aws" {
-  region  = "eu-west-1"
-  version = "~>2.43"
-}
-
 module "s3_bucket" {
-  source    = "git::https://github.com/dfds/infrastructure-modules.git//_sub/storage/s3-bucket?ref=0.2.28"
+  source    = "git::https://github.com/dfds/infrastructure-modules.git//_sub/storage/s3-bucket?ref=0.5.35"
   s3_bucket = var.s3_bucket
 }
 
@@ -68,7 +63,7 @@ resource "aws_glue_catalog_table" "eks-audit" {
 }
 
 module "iam_role" {
-  source               = "git::https://github.com/dfds/infrastructure-modules.git//_sub/security/iam-role?ref=0.2.28"
+  source               = "git::https://github.com/dfds/infrastructure-modules.git//_sub/security/iam-role?ref=0.5.35"
   role_name            = "CloudWatchLogsCollector"
   role_description     = "Role for CloudWatch Logs Collector, that queries CWL and saves results to S3."
   assume_role_policy   = <<EOF
@@ -82,8 +77,8 @@ module "iam_role" {
       },
       "Action": "sts:AssumeRole",
       "Condition": {}
-    }
-  ]
+        }
+    ]
 }
 EOF
   role_policy_name     = "CloudWatchLogsCollector"

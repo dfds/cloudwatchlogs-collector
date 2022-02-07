@@ -14,7 +14,7 @@ remote_state {
 }
 
 terraform {
-  source = "${get_terragrunt_dir()}"
+  source = get_terragrunt_dir()
 }
 
 inputs = {
