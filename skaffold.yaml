@@ -1,0 +1,15 @@
+apiVersion: skaffold/v2beta26
+kind: Config
+metadata:
+  name: cloudwatchlogs-collector
+build:
+  artifacts:
+    - image: dfdsdk/cloudwatchlogs-collector
+      context: eks
+      docker:
+        dockerfile: Dockerfile
+deploy:
+  kubectl:
+    manifests:
+      - k8s_initial/namespace.yaml
+      - k8s/deployment.yaml

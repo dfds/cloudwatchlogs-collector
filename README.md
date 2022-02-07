@@ -19,6 +19,7 @@
 - [Deployment Flow](#deployment-flow)
   - [Infrastructure Deployment](#infrastructure-deployment)
   - [Collector Deployment](#collector-deployment)
+- [Development](#development)
 - [Additional Resources](#additional-resources)
 - [License](#license)
 
@@ -109,6 +110,10 @@ See also [Additional Resources](#additional-resources).
 3. Release tag triggers build in [Docker Hub][docker-tags]
 4. Update image tag in deployment manifests in `./k8s/` folder
 5. This triggers CI/CD in Azure DevOps
+
+## Development
+
+Run `skaffold dev`.
 
 ## Additional Resources
 
