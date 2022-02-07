@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/powershell:lts-debian-buster-slim AS base
+FROM mcr.microsoft.com/powershell:lts-debian-bullseye-slim AS base
 
 SHELL ["pwsh", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
 
