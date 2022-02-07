@@ -86,7 +86,7 @@ The priority is to update the built-in help when relevant. The following table o
 | IntervalWaitMinutes | The interval at which to check if query interval has passed. (default: 60)                                                           |
 | S3BucketName        | The S3 bucket the output file is uploaded to.                                                                                        |
 | S3Path              | The path (or directory) in the S3 bucket to store the output file.                                                                   |
-| LocalExec           | Used for local execution/debugging. Lowers intervals to give quicker feedback and retains local output file.                         |
+| DevelopmentMode     | Development mode. Lowers intervals to give quicker feedback and retains local output file.                                           |
 
 Additional resources, including documentation on CloudWatch Logs query syntax, AWS Tools for PowerShell authentication etc., can be listed by running:
 
