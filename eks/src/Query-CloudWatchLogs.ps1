@@ -75,12 +75,12 @@ param (
     [string]
     $S3BucketName,
 
-    # The path (or directory) in the S3 bucket to store the output file.  
+    # The path (or directory) in the S3 bucket to store the output file.
     [Parameter()]
     [string]
     $S3Path,
 
-    # Used for local execution/debugging. Lowers intervals to give quicker feedback and retains local output file. 
+    # Used for local execution/debugging. Lowers intervals to give quicker feedback and retains local output file.
     [switch]
     $LocalExec
 
@@ -91,7 +91,8 @@ Begin {
     # Load include file
     If ($PSScriptRoot) {
         $ScriptRoot = $PSScriptRoot
-    } Else {
+    }
+    Else {
         $ScriptRoot = './'
     }
     . (Join-Path $ScriptRoot 'include.ps1')
@@ -109,13 +110,13 @@ Begin {
 
     # Local execution?
     If ($LocalExec) {
-        $IntervalWaitMinutes = 1/6
-        $QueryIntervalHours  = 1/60
+        $IntervalWaitMinutes = 1 / 6
+        $QueryIntervalHours = 1 / 60
     }
 
     # Set AWS profile and region
     Set-DefaultAWSRegion -Region $AwsRegion
-    If ($AwsProfile) {    
+    If ($AwsProfile) {
         Set-AWSCredential -ProfileName $AwsProfile
     }
 
@@ -125,8 +126,14 @@ Process {
 
     While ($true) {
 
+        # Verify access to S3 bucket
+
+
         # Get basic info on log group
-        $LogGroup = Get-CWLLogGroup -LogGroupNamePrefix $LogGroupName | Where-Object {$_.LogGroupName -eq $LogGroupName}
+        $LogGroup = Get-CWLLogGroup -LogGroupNamePrefix $LogGroupName | Where-Object { $_.LogGroupName -eq $LogGroupName }
+        if (!($LogGroup)) {
+            throw "CloudWatch log group ""$LogGroupName"" not found."
+        }
         $LogGroupStartTime = $LogGroup.CreationTime
         $LogGroupStartTimeUnix = [math]::Round((Get-DateTime -Date $LogGroupStartTime).UnixTime)
 
@@ -137,7 +144,7 @@ Process {
             Read-S3Object -BucketName $S3BucketName -Key $LastQueryS3Key -File $LastQueryFile | Out-Null
             [int64]$QueryStartTimeUnix = Get-Content $LastQueryFile -ErrorAction Stop | Select-Object -First 1
         }
-        Catch { 
+        Catch {
             Write-Host "No file found for last query, defaulting to creation time of log group ($LogGroupStartTime)"
             [int64]$QueryStartTimeUnix = $LogGroupStartTimeUnix
         }
@@ -166,7 +173,7 @@ Process {
             }
             [pscustomobject]@{
                 StartTime = $StartTime
-                EndTime = $EndTime
+                EndTime   = $EndTime
             }
         }
 
