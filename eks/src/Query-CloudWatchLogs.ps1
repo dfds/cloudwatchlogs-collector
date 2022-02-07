@@ -1,4 +1,5 @@
-#Requires -Module @{ ModuleName = 'AWSPowerShell.NetCore'; ModuleVersion = '4.0.0' }
+#Requires -Module @{ ModuleName = 'AWS.Tools.CloudWatchLogs'; ModuleVersion = '4.1.0' }
+#Requires -Module @{ ModuleName = 'AWS.Tools.S3'; ModuleVersion = '4.1.0' }
 
 <#
 
