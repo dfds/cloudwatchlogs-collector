@@ -1,0 +1,20 @@
+resources:
+  - serviceaccount.yaml
+  - deployment.yaml
+
+vars:
+  - name: ROLE_ARN
+    objref:
+      kind: ConfigMap
+      name: environment
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.CWLC_ROLE_ARN
+
+configMapGenerator:
+  - name: environment
+
+    # envs: [environment.properties]
+
+configurations:
+  - env-var-transformer.yaml

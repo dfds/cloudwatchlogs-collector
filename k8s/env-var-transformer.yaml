@@ -1,0 +1,3 @@
+varReference:
+  - kind: ServiceAccount
+    path: metadata/annotations
