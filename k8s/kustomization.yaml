@@ -10,11 +10,24 @@ vars:
       apiVersion: v1
     fieldref:
       fieldpath: data.CWLC_ROLE_ARN
+  - name: LOG_GROUP
+    objref:
+      kind: ConfigMap
+      name: environment
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.CWLC_LOG_GROUP
+  - name: BUCKET_NAME
+    objref:
+      kind: ConfigMap
+      name: environment
+      apiVersion: v1
+    fieldref:
+      fieldpath: data.CWLC_BUCKET_NAME
 
 configMapGenerator:
   - name: environment
-
-    # envs: [environment.properties]
+    envs: [environment.properties]
 
 configurations:
   - env-var-transformer.yaml

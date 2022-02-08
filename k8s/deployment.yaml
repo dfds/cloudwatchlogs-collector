@@ -17,18 +17,18 @@ spec:
     spec:
       serviceAccountName: cloudwatchlogs-collector-sa
       containers:
-        - image: dfdsdk/cloudwatchlogs-collector:eks-0.5
+        - name: cloudwatchlogs-collector
+          image: dfdsdk/cloudwatchlogs-collector:eks-0.5
           args:
             - -AwsRegion
             - eu-west-1
             - -LogGroupName
-            - /aws/eks/hellman/cluster
+            - $(LOG_GROUP)
             - -LogStreamNamePrefix
             - kube-apiserver-audit-
             - -QueryIntervalHours
             - "12"
             - -S3BucketName
-            - dfds-datalake
+            - $(BUCKET_NAME)
             - -S3Path
             - aws/eks
-          name: cloudwatchlogs-collector
