@@ -90,6 +90,8 @@ param (
 
 Begin {
 
+    Write-Host "＼（〇_ｏ）／"
+
     # Load include file
     If ($PSScriptRoot) {
         $ScriptRoot = $PSScriptRoot
@@ -135,7 +137,7 @@ Begin {
 
     # Test write permission to S3 bucket
     $S3AccessTestKey = "$S3Path/cloudwatchlogs-collector_access_test"
-    try { Write-S3Object -BucketName $S3BucketName -Key $S3AccessTestKey -Content 'Test that CloudWatchLogs-Collector can access S3 bucket' }
+    try { Write-S3Object -BucketName $S3BucketName -Key $S3AccessTestKey -Content 'Test that CloudWatchLogs-Collector can access S3 bucket' | Out-Null }
     catch { throw "Cannot write S3 object ""s3://$S3BucketName/$S3AccessTestKey"": $_" }
 
     # Test read permission to S3 bucket
@@ -145,7 +147,7 @@ Begin {
     Remove-Item $TempFilePath -Force
 
     # Test delete permission to S3 bucket (access test file only)
-    try { Remove-S3Object -BucketName $S3BucketName -Key $S3AccessTestKey -Force }
+    try { Remove-S3Object -BucketName $S3BucketName -Key $S3AccessTestKey -Force | Out-Null }
     catch { throw "Cannot delete S3 object ""s3://$S3BucketName/$S3AccessTestKey"": $_" }
 
 }
