@@ -9,21 +9,21 @@ vars:
       name: environment
       apiVersion: v1
     fieldref:
-      fieldpath: data.CWLC_ROLE_ARN
+      fieldpath: data.ROLE_ARN
   - name: LOG_GROUP
     objref:
       kind: ConfigMap
       name: environment
       apiVersion: v1
     fieldref:
-      fieldpath: data.CWLC_LOG_GROUP
+      fieldpath: data.LOG_GROUP
   - name: BUCKET_NAME
     objref:
       kind: ConfigMap
       name: environment
       apiVersion: v1
     fieldref:
-      fieldpath: data.CWLC_BUCKET_NAME
+      fieldpath: data.BUCKET_NAME
 
 configMapGenerator:
   - name: environment
