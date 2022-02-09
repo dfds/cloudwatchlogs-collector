@@ -27,7 +27,7 @@ vars:
 
 configMapGenerator:
   - name: environment
-    envs: [environment.properties]
+    envs: [vars.env]
 
 configurations:
   - env-var-transformer.yaml
