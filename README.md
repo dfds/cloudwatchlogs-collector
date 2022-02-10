@@ -113,6 +113,16 @@ See also [Additional Resources](#additional-resources).
 
 ## Development
 
+*Work in progress.*
+
+Create `./k8s/vars.env`:
+
+```env
+ROLE_ARN=<ARN of the AWS IAM role (typically 'CloudWatchLogsCollector') for the workload to assume>
+LOG_GROUP=<Name of CloudWatch Logs log group to get events from, probably /aws/eks/$CLUSTER_NAME/cluster>
+BUCKET_NAME=<Name of S3 bucket to store filtered events>
+```
+
 Run `skaffold dev`.
 
 ## Additional Resources
