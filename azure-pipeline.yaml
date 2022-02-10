@@ -85,9 +85,10 @@ stages:
                   artifact: manifests
                   displayName: "Download Artifact: manifests"
                 - script: |
-                    cat $(Pipeline.Workspace)/manifests/vars.env
-                - script: |
-                    kustomize build  $(Pipeline.Workspace)/manifests/
+                    mkdir -p $(Pipeline.Workspace)/kustomize/
+                    kustomize build $(Pipeline.Workspace)/manifests/ > $(Pipeline.Workspace)/kustomize/kustomized.yaml
+                    cat $(Pipeline.Workspace)/kustomize/kustomized.yaml
+                  displayName: Kustomize manifests
 
                 # # Apply Kubernetes manifests
                 # - task: Kubernetes@1
@@ -97,4 +98,4 @@ stages:
                 #     kubernetesServiceEndpoint: "$(k8s-service-connection)"
                 #     namespace: "$(kubernetes-namespace)"
                 #     command: apply
-                #     arguments: "-f $(Pipeline.Workspace)/manifests/"
+                #     arguments: "-f $(Pipeline.Workspace)/kustomize/kustomized.yaml"
