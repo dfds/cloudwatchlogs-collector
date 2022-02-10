@@ -28,8 +28,10 @@ resources:
     - container: prime_pipeline_container
       image: dfdsdk/prime-pipeline:0.6.9
       env:
-        - AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
-        - TF_VAR_s3_bucket: $(BUCKET_NAME)
+        {
+          AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY),
+          TF_VAR_s3_bucket: $(BUCKET_NAME),
+        }
 
 # Global variables for the pipeline
 variables:
