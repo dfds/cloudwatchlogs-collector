@@ -68,29 +68,32 @@ stages:
             displayName: Generate vars.env file for Kustomize
 
           # Upload Kubernetes manifests to current artifact Pipeline from folder /k8s
-          # - publish: $(System.DefaultWorkingDirectory)/k8s
-          #   artifact: manifests
-          #   displayName: "Publish Artifact: manifests"
+          - publish: $(System.DefaultWorkingDirectory)/k8s
+            artifact: manifests
+            displayName: "Publish Artifact: manifests"
 
       # Deployment job for kubernetes deployments
-      # - deployment: K8s
-      #   displayName: "Deploy to Kubernetes"
-      #   dependsOn: infrastructure
-      #   environment: "Hellman"
-      #   strategy:
-      #     runOnce:
-      #       deploy:
-      #         steps:
-      #           # Download manifest from current artifacts pipeline
-      #           - download: current
-      #             artifact: manifests
-      #             displayName: "Download Artifact: manifests"
-      #           # Apply Kubernetes manifests
-      #           - task: Kubernetes@1
-      #             displayName: "Apply manifests"
-      #             inputs:
-      #               connectionType: Kubernetes Service Connection
-      #               kubernetesServiceEndpoint: "$(k8s-service-connection)"
-      #               namespace: "$(kubernetes-namespace)"
-      #               command: apply
-      #               arguments: "-f $(Pipeline.Workspace)/manifests/"
+      - deployment: K8s
+        displayName: "Deploy to Kubernetes"
+        dependsOn: infrastructure
+        environment: "Hellman"
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                # Download manifest from current artifacts pipeline
+                - download: current
+                  artifact: manifests
+                  displayName: "Download Artifact: manifests"
+                - script: |
+                    cat $(Pipeline.Workspace)/manifests/vars.env
+
+                # # Apply Kubernetes manifests
+                # - task: Kubernetes@1
+                #   displayName: "Apply manifests"
+                #   inputs:
+                #     connectionType: Kubernetes Service Connection
+                #     kubernetesServiceEndpoint: "$(k8s-service-connection)"
+                #     namespace: "$(kubernetes-namespace)"
+                #     command: apply
+                #     arguments: "-f $(Pipeline.Workspace)/manifests/"
