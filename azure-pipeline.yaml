@@ -61,10 +61,10 @@ stages:
           #   displayName: Terragrunt Apply
 
           - script: |
-              echo $ROLE_ARN
-              echo $LOG_GROUP
-              echo $BUCKET_NAME
-              echo $(System.DefaultWorkingDirectory)/k8s
+              echo ROLE_ARN=$ROLE_ARN > $(System.DefaultWorkingDirectory)/k8s/vars.env
+              echo LOG_GROUP=$LOG_GROUP >> $(System.DefaultWorkingDirectory)/k8s/vars.env
+              echo BUCKET_NAME=$BUCKET_NAME >> $(System.DefaultWorkingDirectory)/k8s/vars.env
+              cat $(System.DefaultWorkingDirectory)/k8s/vars.env
             displayName: Generate vars.env file for Kustomize
 
           # Upload Kubernetes manifests to current artifact Pipeline from folder /k8s
