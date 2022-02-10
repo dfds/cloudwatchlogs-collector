@@ -19,4 +19,5 @@ terraform {
 
 inputs = {
   s3_bucket = "dfds-datalake"
+  # oidc_provider
 }
