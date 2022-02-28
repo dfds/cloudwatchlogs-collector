@@ -16,8 +16,3 @@ remote_state {
 terraform {
   source = get_terragrunt_dir()
 }
-
-inputs = {
-  s3_bucket = "dfds-datalake"
-  # oidc_provider
-}

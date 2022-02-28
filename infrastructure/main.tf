@@ -2,6 +2,10 @@ terraform {
   backend "s3" {}
 }
 
+provider "aws" {
+  region = var.aws_region
+}
+
 module "s3_bucket" {
   source    = "git::https://github.com/dfds/infrastructure-modules.git//_sub/storage/s3-bucket?ref=0.5.35"
   s3_bucket = var.s3_bucket
@@ -111,7 +115,7 @@ EOF
       "Resource": "*"
     },
     {
-      "Sid": "WriteDatalakeS3",
+      "Sid": "WriteOnlyDatalakeS3",
       "Effect": "Allow",
       "Action": [
         "s3:PutObject",
@@ -124,7 +128,7 @@ EOF
       ]
     },
     {
-      "Sid": "WriteDatalakeS3",
+      "Sid": "DeleteDatalakeS3AccessTest",
       "Effect": "Allow",
       "Action": [
         "s3:DeleteObject"
