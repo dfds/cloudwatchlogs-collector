@@ -124,15 +124,16 @@ Replace `${DATALAKE_BUCKET}` with the name of the datalake S3 bucket.
             "Effect": "Allow",
             "Action": [
                 "iam:GetRole",
+                "iam:GetRolePolicy",
                 "iam:ListAttachedRolePolicies",
                 "iam:ListInstanceProfilesForRole",
                 "iam:ListRolePolicies",
-                "iam:DeleteRolePolicy",
                 "iam:CreateRole",
                 "iam:DeleteRole",
-                "iam:UpdateRole",
+                "iam:DeleteRolePolicy",
                 "iam:PutRolePolicy",
-                "iam:GetRolePolicy"
+                "iam:UpdateAssumeRolePolicy",
+                "iam:UpdateRole"
             ],
             "Resource": "arn:aws:iam::*:role/CloudWatchLogsCollector"
         }
