@@ -61,7 +61,8 @@ stages:
             displayName: Terragrunt Plan
 
           - script: |
-              terragrunt apply --terragrunt-working-dir ./infrastructure --terragrunt-source-update --terragrunt-non-interactive -input=false -auto-approve
+              # terragrunt apply --terragrunt-working-dir ./infrastructure --terragrunt-source-update --terragrunt-non-interactive -input=false -auto-approve
+              printenv | sort
             displayName: Terragrunt Apply
 
           - script: |
