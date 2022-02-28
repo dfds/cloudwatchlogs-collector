@@ -60,9 +60,9 @@ stages:
               echo Bucket: $TF_VAR_s3_bucket
             displayName: Terragrunt Plan
 
-          # - script: |
-          #     terragrunt apply --terragrunt-working-dir ./infrastructure --terragrunt-source-update --terragrunt-non-interactive -input=false -auto-approve
-          #   displayName: Terragrunt Apply
+          - script: |
+              terragrunt apply --terragrunt-working-dir ./infrastructure --terragrunt-source-update --terragrunt-non-interactive -input=false -auto-approve
+            displayName: Terragrunt Apply
 
           - script: |
               echo ROLE_ARN=$ROLE_ARN > $(System.DefaultWorkingDirectory)/k8s/vars.env
@@ -95,11 +95,11 @@ stages:
                   displayName: Kustomize manifests
 
                 # Apply Kubernetes manifests
-                # - task: Kubernetes@1
-                #   displayName: "Apply manifests"
-                #   inputs:
-                #     connectionType: Kubernetes Service Connection
-                #     kubernetesServiceEndpoint: "$(k8s-service-connection)"
-                #     namespace: "$(kubernetes-namespace)"
-                #     command: apply
-                #     arguments: "-f $(Pipeline.Workspace)/kustomize/kustomized.yaml"
+                - task: Kubernetes@1
+                  displayName: "Apply manifests"
+                  inputs:
+                    connectionType: Kubernetes Service Connection
+                    kubernetesServiceEndpoint: "$(k8s-service-connection)"
+                    namespace: "$(kubernetes-namespace)"
+                    command: apply
+                    arguments: "-f $(Pipeline.Workspace)/kustomize/kustomized.yaml"
