@@ -31,6 +31,8 @@ resources:
         {
           AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY),
           TF_VAR_s3_bucket: $(BUCKET_NAME),
+          TF_VAR_oidc_provider: $(TF_VAR_oidc_provider),
+          TF_VAR_oidc_account_id: $(TF_VAR_oidc_account_id),
         }
 
 # Global variables for the pipeline
