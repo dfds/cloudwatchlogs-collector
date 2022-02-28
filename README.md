@@ -15,6 +15,12 @@
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
 - [Deployment prerequisites](#deployment-prerequisites)
+  - [AWS IAM user policies](#aws-iam-user-policies)
+    - [DedManageState](#dedmanagestate)
+    - [DatalakeBucket](#datalakebucket)
+    - [DatalakeGlue](#datalakeglue)
+    - [CloudwatchlogsCollectorRole](#cloudwatchlogscollectorrole)
+  - [Kubernetes manifests](#kubernetes-manifests)
 - [Usage](#usage)
 - [Deployment Flow](#deployment-flow)
   - [Infrastructure Deployment](#infrastructure-deployment)
@@ -58,6 +64,83 @@ Notable project directories and files:
 - [AWS Tools for Powershell NetCore][aws-powershell] 4.0.0+
 
 ## Deployment prerequisites
+
+### AWS IAM user policies
+
+For deploying the infrastructure, the following policies are neded on the `datalake-deploy` AWS IAM user.
+
+#### DedManageState
+
+Attach the managed policy `DedManageState` (where are these policy details documented?)
+
+#### DatalakeBucket
+
+Replace `${DATALAKE_BUCKET}` with the name of the datalake S3 bucket.
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "DatalakeBucket",
+            "Effect": "Allow",
+            "Action": [
+                "s3:PutBucketTagging",
+                "s3:PutBucketAcl",
+                "s3:CreateBucket",
+                "s3:DeleteBucket",
+                "s3:DeleteBucketPolicy"
+            ],
+            "Resource": "arn:aws:s3:::${DATALAKE_BUCKET}"
+        }
+    ]
+}
+```
+
+#### DatalakeGlue
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "DatalakeGlue",
+            "Effect": "Allow",
+            "Action": "glue:*",
+            "Resource": "*"
+        }
+    ]
+}
+```
+
+#### CloudwatchlogsCollectorRole
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "CloudwatchlogsCollectorRole",
+            "Effect": "Allow",
+            "Action": [
+                "iam:GetRole",
+                "iam:ListAttachedRolePolicies",
+                "iam:ListInstanceProfilesForRole",
+                "iam:ListRolePolicies",
+                "iam:DeleteRolePolicy",
+                "iam:CreateRole",
+                "iam:DeleteRole",
+                "iam:UpdateRole",
+                "iam:PutRolePolicy",
+                "iam:GetRolePolicy"
+            ],
+            "Resource": "arn:aws:iam::*:role/CloudWatchLogsCollector"
+        }
+    ]
+}
+```
+
+### Kubernetes manifests
 
 With the change to scoped Kubernetes service connections during deploment, certain manifests have been moved out of the k8s directory and moved to the *k8s_initial* directory.
 
