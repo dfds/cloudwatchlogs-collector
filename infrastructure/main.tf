@@ -7,7 +7,7 @@ provider "aws" {
 }
 
 module "s3_bucket" {
-  source    = "git::https://github.com/dfds/infrastructure-modules.git//_sub/storage/s3-bucket?ref=0.5.35"
+  source    = "git::https://github.com/dfds/infrastructure-modules.git//_sub/storage/s3-bucket?ref=0.5.66"
   s3_bucket = var.s3_bucket
 }
 
@@ -67,7 +67,7 @@ resource "aws_glue_catalog_table" "eks-audit" {
 }
 
 module "iam_role" {
-  source               = "git::https://github.com/dfds/infrastructure-modules.git//_sub/security/iam-role?ref=0.5.35"
+  source               = "git::https://github.com/dfds/infrastructure-modules.git//_sub/security/iam-role?ref=0.5.66"
   role_name            = "CloudWatchLogsCollector"
   role_description     = "Role for CloudWatch Logs Collector, that queries CWL and saves results to S3."
   assume_role_policy   = <<EOF
