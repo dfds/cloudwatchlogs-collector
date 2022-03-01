@@ -18,7 +18,7 @@ spec:
       serviceAccountName: cloudwatchlogs-collector-sa
       containers:
         - name: cloudwatchlogs-collector
-          image: dfdsdk/cloudwatchlogs-collector:eks-0.5
+          image: dfdsdk/cloudwatchlogs-collector:eks-0.6.0
           args:
             - -AwsRegion
             - eu-west-1
