@@ -4,87 +4,104 @@ name: $(Build.BuildId)
 trigger:
   branches:
     include:
-    - master
+      - master
   paths:
     # Changes to these files does not trigger a new build / release
     exclude:
-    - README.md
-    - LICENSE
-    - azure-pipelines.yaml
-    - eks/*
+      - README.md
+      - LICENSE
+      - azure-pipelines.yaml
+      - eks/*
     include:
-    - k8s/*
-    - infrastructure/*
+      - k8s/*
+      - infrastructure/*
 
 # Disables triggering Pipeline run at creation of every Pull Request
 pr: none
 
 # Default agent pool to use for build pipeline
 pool:
-  vmImage: 'ubuntu-latest'
+  vmImage: "ubuntu-latest"
 
 resources:
   containers:
     - container: prime_pipeline_container
-      image: dfdsdk/prime-pipeline:0.6.7
+      image: dfdsdk/prime-pipeline:0.6.9
       env:
-        AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+        {
+          AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY),
+          TF_VAR_s3_bucket: $(BUCKET_NAME),
+          TF_VAR_oidc_provider: $(TF_VAR_oidc_provider),
+          TF_VAR_oidc_account_id: $(TF_VAR_oidc_account_id),
+        }
 
 # Global variables for the pipeline
 variables:
-  - name: 'k8s-service-connection'
-    value: 'Kubernetes-Hellman-ops-deploy'
-  - name: 'kubernetes-namespace'
-    value: 'logcollect'
+  - name: "k8s-service-connection"
+    value: "Kubernetes-Hellman-ops-deploy"
+  - name: "kubernetes-namespace"
+    value: "logcollect"
 
 stages:
-# Continuous Deployment steps
-- stage: CD
-  displayName: 'Continuous Deployment'
-  # Run CD only if CI succeeds and if pipeline runs from Master branch
-  jobs:
-  - job: infrastructure
-    displayName: 'Provision infrastructure'
-    container: prime_pipeline_container
-    steps:
-      - script: |
-          echo 'Checking for required variables...'
-          bash -c '[[ -z $AWS_ACCESS_KEY_ID || -z $AWS_SECRET_ACCESS_KEY ]] && exit 1 || true'
-        displayName: Init pipeline
+  # Continuous Deployment steps
+  - stage: CD
+    displayName: "Continuous Deployment"
+    # Run CD only if CI succeeds and if pipeline runs from Master branch
+    jobs:
+      - job: infrastructure
+        displayName: "Provision infrastructure"
+        container: prime_pipeline_container
+        steps:
+          - script: |
+              echo 'Checking for required variables...'
+              bash -c '[[ -z $AWS_ACCESS_KEY_ID || -z $AWS_SECRET_ACCESS_KEY ]] && exit 1 || true'
+            displayName: Init pipeline
 
-      - script: |
-          terragrunt plan --terragrunt-working-dir ./infrastructure --terragrunt-source-update --terragrunt-non-interactive -input=false
-        displayName: Terragrunt Plan
+          - script: |
+              terragrunt plan --terragrunt-working-dir ./infrastructure --terragrunt-source-update --terragrunt-non-interactive -input=false
+              echo Bucket: $TF_VAR_s3_bucket
+            displayName: Terragrunt Plan
 
-      - script: |
-          terragrunt apply --terragrunt-working-dir ./infrastructure --terragrunt-source-update --terragrunt-non-interactive -input=false -auto-approve
-        displayName: Terragrunt Apply
-      
-      # Upload Kubernetes manifests to current artifact Pipeline from folder /k8s
-      - publish: $(System.DefaultWorkingDirectory)/k8s
-        artifact: manifests
-        displayName: 'Publish Artifact: manifests'
+          - script: |
+              terragrunt apply --terragrunt-working-dir ./infrastructure --terragrunt-source-update --terragrunt-non-interactive -input=false -auto-approve
+            displayName: Terragrunt Apply
 
-  # Deployment job for kubernetes deployments
-  - deployment: K8s
-    displayName: 'Deploy to Kubernetes'
-    dependsOn: infrastructure
-    environment: 'Hellman'
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          
-          # Download manifest from current artifacts pipeline
-          - download: current
+          - script: |
+              echo ROLE_ARN=$ROLE_ARN > $(System.DefaultWorkingDirectory)/k8s/vars.env
+              echo LOG_GROUP=$LOG_GROUP >> $(System.DefaultWorkingDirectory)/k8s/vars.env
+              echo BUCKET_NAME=$BUCKET_NAME >> $(System.DefaultWorkingDirectory)/k8s/vars.env
+            displayName: Generate vars.env file for Kustomize
+
+          # Upload Kubernetes manifests to current artifact Pipeline from folder /k8s
+          - publish: $(System.DefaultWorkingDirectory)/k8s
             artifact: manifests
-            displayName: 'Download Artifact: manifests'
-          # Apply Kubernetes manifests
-          - task: Kubernetes@1
-            displayName: 'Apply manifests'
-            inputs:
-              connectionType: Kubernetes Service Connection
-              kubernetesServiceEndpoint: '$(k8s-service-connection)'
-              namespace: '$(kubernetes-namespace)'
-              command: apply
-              arguments: '-f $(Pipeline.Workspace)/manifests/'
+            displayName: "Publish Artifact: manifests"
+
+      # Deployment job for kubernetes deployments
+      - deployment: K8s
+        displayName: "Deploy to Kubernetes"
+        dependsOn: infrastructure
+        environment: "Hellman"
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                # Download manifest from current artifacts pipeline
+                - download: current
+                  artifact: manifests
+                  displayName: "Download Artifact: manifests"
+
+                - script: |
+                    mkdir -p $(Pipeline.Workspace)/kustomize/
+                    kustomize build $(Pipeline.Workspace)/manifests/ > $(Pipeline.Workspace)/kustomize/kustomized.yaml
+                  displayName: Kustomize manifests
+
+                # Apply Kubernetes manifests
+                - task: Kubernetes@1
+                  displayName: "Apply manifests"
+                  inputs:
+                    connectionType: Kubernetes Service Connection
+                    kubernetesServiceEndpoint: "$(k8s-service-connection)"
+                    namespace: "$(kubernetes-namespace)"
+                    command: apply
+                    arguments: "-f $(Pipeline.Workspace)/kustomize/kustomized.yaml"

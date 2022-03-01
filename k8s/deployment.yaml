@@ -14,22 +14,21 @@ spec:
     metadata:
       labels:
         app: cloudwatchlogs-collector
-      annotations:
-        iam.amazonaws.com/role: CloudWatchLogsCollector
     spec:
+      serviceAccountName: cloudwatchlogs-collector-sa
       containers:
-      - image: dfdsdk/cloudwatchlogs-collector:eks-0.5
-        args:
-        - -AwsRegion
-        - eu-west-1
-        - -LogGroupName
-        - /aws/eks/hellman/cluster
-        - -LogStreamNamePrefix
-        - kube-apiserver-audit-
-        - -QueryIntervalHours
-        - "12"
-        - -S3BucketName
-        - dfds-datalake
-        - -S3Path
-        - aws/eks
-        name: cloudwatchlogs-collector
+        - name: cloudwatchlogs-collector
+          image: dfdsdk/cloudwatchlogs-collector:eks-0.5
+          args:
+            - -AwsRegion
+            - eu-west-1
+            - -LogGroupName
+            - $(LOG_GROUP)
+            - -LogStreamNamePrefix
+            - kube-apiserver-audit-
+            - -QueryIntervalHours
+            - "12"
+            - -S3BucketName
+            - $(BUCKET_NAME)
+            - -S3Path
+            - aws/eks

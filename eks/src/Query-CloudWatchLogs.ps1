@@ -1,4 +1,6 @@
-#Requires -Module @{ ModuleName = 'AWSPowerShell.NetCore'; ModuleVersion = '4.0.0' }
+#Requires -Module @{ ModuleName = 'AWS.Tools.CloudWatchLogs'; ModuleVersion = '4.1.0' }
+#Requires -Module @{ ModuleName = 'AWS.Tools.S3'; ModuleVersion = '4.1.0' }
+#Requires -Module @{ ModuleName = 'AWS.Tools.SecurityToken'; ModuleVersion = '4.1.0' }
 
 <#
 
@@ -13,7 +15,7 @@
 datalake-bucket -S3Path aws/eks -QueryIntervalHours 12
 
 .EXAMPLE
-    ./Query-CloudWatchLogs.ps1 -AwsRegion eu-west-1 -LogGroupName /aws/eks/clustername/cluster -LogStreamNamePrefix kube-apiserver-audit- -S3BucketName datalake-bucket -S3Path aws/eks -LocalExec -AwsProfile logging-orgrole
+    ./Query-CloudWatchLogs.ps1 -AwsRegion eu-west-1 -LogGroupName /aws/eks/clustername/cluster -LogStreamNamePrefix kube-apiserver-audit- -S3BucketName datalake-bucket -S3Path aws/eks -DevelopmentMode -AwsProfile logging-orgrole
 
 .NOTES
     Consider uploading all json files in path (retry)
@@ -75,23 +77,26 @@ param (
     [string]
     $S3BucketName,
 
-    # The path (or directory) in the S3 bucket to store the output file.  
+    # The path (or directory) in the S3 bucket to store the output file.
     [Parameter()]
     [string]
     $S3Path,
 
-    # Used for local execution/debugging. Lowers intervals to give quicker feedback and retains local output file. 
+    # Development mode. Lowers intervals to give quicker feedback and retains local output file.
     [switch]
-    $LocalExec
+    $DevelopmentMode
 
 )
 
 Begin {
 
+    Write-Host "＼（〇_ｏ）／"
+
     # Load include file
     If ($PSScriptRoot) {
         $ScriptRoot = $PSScriptRoot
-    } Else {
+    }
+    Else {
         $ScriptRoot = './'
     }
     . (Join-Path $ScriptRoot 'include.ps1')
@@ -108,16 +113,42 @@ Begin {
     $QueryChunkSeconds = $QueryChunkDays * 24 * 60 * 60
 
     # Local execution?
-    If ($LocalExec) {
-        $IntervalWaitMinutes = 1/6
-        $QueryIntervalHours  = 1/60
+    If ($DevelopmentMode) {
+        $IntervalWaitMinutes = 1 / 6
+        $QueryIntervalHours = 1 / 60
     }
 
     # Set AWS profile and region
     Set-DefaultAWSRegion -Region $AwsRegion
-    If ($AwsProfile) {    
-        Set-AWSCredential -ProfileName $AwsProfile
+    If (($env:AWS_ROLE_ARN) -and ($env:AWS_WEB_IDENTITY_TOKEN_FILE)) {
+        # Authenticate via IAM Roles for Service Accounts (IRSA)
+        $UseWebIdentity = $true
+        Refresh-AWSWebCreds
     }
+    elseif ($AwsProfile) {
+        # ... or use the specified AWS profile
+        Set-AWSCredential -ProfileName $AwsProfile
+    } # ... or use normal credentials search order
+
+    # Test if S3 bucket exists
+    If (!(Test-S3Bucket -BucketName $S3BucketName)) {
+        throw "S3 bucket ""$S3BucketName"" not found."
+    }
+
+    # Test write permission to S3 bucket
+    $S3AccessTestKey = "$S3Path/cloudwatchlogs-collector_access_test"
+    try { Write-S3Object -BucketName $S3BucketName -Key $S3AccessTestKey -Content 'Test that CloudWatchLogs-Collector can access S3 bucket' | Out-Null }
+    catch { throw "Cannot write S3 object ""s3://$S3BucketName/$S3AccessTestKey"": $_" }
+
+    # Test read permission to S3 bucket
+    $TempFilePath = New-TemporaryFile | Select-Object -ExpandProperty FullName
+    try { Read-S3Object -BucketName $S3BucketName -Key $S3AccessTestKey -File $TempFilePath | Out-Null }
+    catch { throw "Cannot read S3 object ""s3://$S3BucketName/$S3AccessTestKey"": $_" }
+    Remove-Item $TempFilePath -Force
+
+    # Test delete permission to S3 bucket (access test file only)
+    try { Remove-S3Object -BucketName $S3BucketName -Key $S3AccessTestKey -Force | Out-Null }
+    catch { throw "Cannot delete S3 object ""s3://$S3BucketName/$S3AccessTestKey"": $_" }
 
 }
 
@@ -125,8 +156,16 @@ Process {
 
     While ($true) {
 
+        # Refresh AWS credentials from web identity token (if used)
+        If ($UseWebIdentity) {
+            Refresh-AWSWebCreds
+        }
+
         # Get basic info on log group
-        $LogGroup = Get-CWLLogGroup -LogGroupNamePrefix $LogGroupName | Where-Object {$_.LogGroupName -eq $LogGroupName}
+        $LogGroup = Get-CWLLogGroup -LogGroupNamePrefix $LogGroupName | Where-Object { $_.LogGroupName -eq $LogGroupName }
+        if (!($LogGroup)) {
+            throw "CloudWatch log group ""$LogGroupName"" not found."
+        }
         $LogGroupStartTime = $LogGroup.CreationTime
         $LogGroupStartTimeUnix = [math]::Round((Get-DateTime -Date $LogGroupStartTime).UnixTime)
 
@@ -137,7 +176,7 @@ Process {
             Read-S3Object -BucketName $S3BucketName -Key $LastQueryS3Key -File $LastQueryFile | Out-Null
             [int64]$QueryStartTimeUnix = Get-Content $LastQueryFile -ErrorAction Stop | Select-Object -First 1
         }
-        Catch { 
+        Catch {
             Write-Host "No file found for last query, defaulting to creation time of log group ($LogGroupStartTime)"
             [int64]$QueryStartTimeUnix = $LogGroupStartTimeUnix
         }
@@ -166,7 +205,7 @@ Process {
             }
             [pscustomobject]@{
                 StartTime = $StartTime
-                EndTime = $EndTime
+                EndTime   = $EndTime
             }
         }
 
@@ -238,7 +277,7 @@ fields @timestamp, verb, objectRef.resource, objectRef.namespace, objectRef.name
             $S3Key = "$S3Path/$OutputFileName"
             Write-Host "Uploading '$OutputFileName' to s3://$S3BucketName/$S3Key"
             Write-S3Object -BucketName $S3BucketName -Key $S3Key -File $OutputFilePath -ContentType $OutputContentType
-            If (!($LocalExec)) {
+            If (!($DevelopmentMode)) {
                 Remove-Item $OutputFilePath
             }
         }

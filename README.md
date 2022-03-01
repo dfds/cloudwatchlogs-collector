@@ -15,10 +15,17 @@
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
 - [Deployment prerequisites](#deployment-prerequisites)
+  - [AWS IAM user policies](#aws-iam-user-policies)
+    - [DedManageState](#dedmanagestate)
+    - [DatalakeBucket](#datalakebucket)
+    - [DatalakeGlue](#datalakeglue)
+    - [CloudwatchlogsCollectorRole](#cloudwatchlogscollectorrole)
+  - [Kubernetes manifests](#kubernetes-manifests)
 - [Usage](#usage)
 - [Deployment Flow](#deployment-flow)
   - [Infrastructure Deployment](#infrastructure-deployment)
   - [Collector Deployment](#collector-deployment)
+- [Development](#development)
 - [Additional Resources](#additional-resources)
 - [License](#license)
 
@@ -58,6 +65,84 @@ Notable project directories and files:
 
 ## Deployment prerequisites
 
+### AWS IAM user policies
+
+For deploying the infrastructure, the following policies are neded on the `datalake-deploy` AWS IAM user.
+
+#### DedManageState
+
+Attach the managed policy `DedManageState` (where are these policy details documented?)
+
+#### DatalakeBucket
+
+Replace `${DATALAKE_BUCKET}` with the name of the datalake S3 bucket.
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "DatalakeBucket",
+            "Effect": "Allow",
+            "Action": [
+                "s3:PutBucketTagging",
+                "s3:PutBucketAcl",
+                "s3:CreateBucket",
+                "s3:DeleteBucket",
+                "s3:DeleteBucketPolicy"
+            ],
+            "Resource": "arn:aws:s3:::${DATALAKE_BUCKET}"
+        }
+    ]
+}
+```
+
+#### DatalakeGlue
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "DatalakeGlue",
+            "Effect": "Allow",
+            "Action": "glue:*",
+            "Resource": "*"
+        }
+    ]
+}
+```
+
+#### CloudwatchlogsCollectorRole
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "CloudwatchlogsCollectorRole",
+            "Effect": "Allow",
+            "Action": [
+                "iam:GetRole",
+                "iam:GetRolePolicy",
+                "iam:ListAttachedRolePolicies",
+                "iam:ListInstanceProfilesForRole",
+                "iam:ListRolePolicies",
+                "iam:CreateRole",
+                "iam:DeleteRole",
+                "iam:DeleteRolePolicy",
+                "iam:PutRolePolicy",
+                "iam:UpdateAssumeRolePolicy",
+                "iam:UpdateRole"
+            ],
+            "Resource": "arn:aws:iam::*:role/CloudWatchLogsCollector"
+        }
+    ]
+}
+```
+
+### Kubernetes manifests
+
 With the change to scoped Kubernetes service connections during deploment, certain manifests have been moved out of the k8s directory and moved to the *k8s_initial* directory.
 
 The manifests within *k8s_initial* will have to be run manually or with a different service connection due to elevated rights.
@@ -85,7 +170,7 @@ The priority is to update the built-in help when relevant. The following table o
 | IntervalWaitMinutes | The interval at which to check if query interval has passed. (default: 60)                                                           |
 | S3BucketName        | The S3 bucket the output file is uploaded to.                                                                                        |
 | S3Path              | The path (or directory) in the S3 bucket to store the output file.                                                                   |
-| LocalExec           | Used for local execution/debugging. Lowers intervals to give quicker feedback and retains local output file.                         |
+| DevelopmentMode     | Development mode. Lowers intervals to give quicker feedback and retains local output file.                                           |
 
 Additional resources, including documentation on CloudWatch Logs query syntax, AWS Tools for PowerShell authentication etc., can be listed by running:
 
@@ -109,6 +194,20 @@ See also [Additional Resources](#additional-resources).
 3. Release tag triggers build in [Docker Hub][docker-tags]
 4. Update image tag in deployment manifests in `./k8s/` folder
 5. This triggers CI/CD in Azure DevOps
+
+## Development
+
+*Work in progress.*
+
+Create `./k8s/vars.env`:
+
+```env
+ROLE_ARN=<ARN of the AWS IAM role (typically 'CloudWatchLogsCollector') for the workload to assume>
+LOG_GROUP=<Name of CloudWatch Logs log group to get events from, probably /aws/eks/$CLUSTER_NAME/cluster>
+BUCKET_NAME=<Name of S3 bucket to store filtered events>
+```
+
+Run `skaffold dev`.
 
 ## Additional Resources
 

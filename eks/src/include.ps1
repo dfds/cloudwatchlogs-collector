@@ -1,5 +1,11 @@
+Function Refresh-AWSWebCreds {
+    Write-Host "Refreshing AWS credentials from token at ""$env:AWS_WEB_IDENTITY_TOKEN_FILE""."
+    $AWS_CREDS = Use-STSWebIdentityRole -RoleArn $env:AWS_ROLE_ARN -RoleSessionName $env:HOSTNAME -WebIdentityToken $(Get-Content $env:AWS_WEB_IDENTITY_TOKEN_FILE) -Select 'Credentials' -Duration 3600
+    Set-AWSCredential -Credential $AWS_CREDS -Scope Global
+}
+
 Function Get-DateTime {
-    
+
     [CmdletBinding(DefaultParameterSetName = 'DateTime')]
 
     param (
